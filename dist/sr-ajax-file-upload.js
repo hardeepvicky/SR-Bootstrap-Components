@@ -47,6 +47,68 @@ jQuery.fn.extend({
             onFileSelect : feature + ".onFileSelect"
         }
         
+        function attachEvents(ajax, _section)
+        {
+            ajax.upload.addEventListener("progress", function(e)
+            {
+                var percent = Math.round((e.loaded / e.total) * 100);
+                _section.find(".progress-bar").css("width", percent + "%");
+                _section.find(".progress-bar .sr-only").html(percent + "%");
+                _section.find(".progress-status").html("Sent : " + $.sr.niceBytes(e.loaded));
+
+            }, false);
+
+            ajax.upload.addEventListener("error", function(e)
+            {
+                var status = _section.find(".status");
+                status.html("Upload Failed");
+                console.error(e);
+            }, false);
+
+            ajax.upload.addEventListener("abort", function(e)
+            {
+                console.log("Upload Aborted");
+            }, false);
+
+            ajax.onreadystatechange = function() 
+            {
+                if (ajax.readyState === 4) 
+                {
+                    if (_section.length == 0 || ajax.responseText.trim().length == 0)
+                    {
+                        return;
+                    }
+
+                    var status = _section.find(".status");
+
+                    try
+                    {
+                        var response = JSON.parse(ajax.responseText);
+                    }
+                    catch(e)
+                    {
+                        $.sr.error.detail("Error in uploading" , ajax.responseText);
+                        status.html("Error");
+                        return;
+                    }
+
+                    if (response["status"] == "1")
+                    {
+                        _section.find(".abort").hide();
+                        status.addClass("alert alert-success");
+                        status.html("Success");
+
+                        settings.onSuccess(response["data"]);
+                    }
+                    else
+                    {
+                        status.addClass("alert alert-danger");
+                        status.html(response["msg"]);
+                    }
+                }
+            }
+        }
+        
         this.each(function () 
         {
             var output_target = $(this).data(feature + "-output-target");
@@ -74,68 +136,6 @@ jQuery.fn.extend({
             if (display != "table" && display != "div")
             {
                 display = "table";
-            }
-            
-            function attachEvents(ajax, _section)
-            {
-                ajax.upload.addEventListener("progress", function(e)
-                {
-                    var percent = Math.round((e.loaded / e.total) * 100);
-                    _section.find(".progress-bar").css("width", percent + "%");
-                    _section.find(".progress-bar .sr-only").html(percent + "%");
-                    _section.find(".progress-status").html("Sent : " + $.sr.niceBytes(e.loaded));
-                    
-                }, false);
-                
-                ajax.upload.addEventListener("error", function(e)
-                {
-                    var status = _section.find(".status");
-                    status.html("Upload Failed");
-                    console.error(e);
-                }, false);
-                
-                ajax.upload.addEventListener("abort", function(e)
-                {
-                    console.log("Upload Aborted");
-                }, false);
-                
-                ajax.onreadystatechange = function() 
-                {
-                    if (ajax.readyState === 4) 
-                    {
-                        if (_section.length == 0 || ajax.responseText.trim().length == 0)
-                        {
-                            return;
-                        }
-                        
-                        var status = _section.find(".status");
-                        
-                        try
-                        {
-                            var response = JSON.parse(ajax.responseText);
-                        }
-                        catch(e)
-                        {
-                            $.sr.error.detail("Error in uploading" , ajax.responseText);
-                            status.html("Error");
-                            return;
-                        }
-                        
-                        if (response["status"] == "1")
-                        {
-                            _section.find(".abort").hide();
-                            status.addClass("alert alert-success");
-                            status.html("Success");
-                            
-                            settings.onSuccess(response["data"]);
-                        }
-                        else
-                        {
-                            status.addClass("alert alert-danger");
-                            status.html(response["msg"]);
-                        }
-                    }
-                }
             }
             
             $(this).on(events.onFileSelect, function()
